@@ -4,12 +4,24 @@ Configuração do meu ambiente, versionada. Um script instala tudo — Ghostty, 
 
 ## Como usar
 
+Com git instalado:
+
 ```sh
-git clone <repo> ~/git/dotenv
+git clone git@github.com:fabiomaciel/dotenv.git ~/git/dotenv
 cd ~/git/dotenv
 ./install.sh --dry-run   # mostra o que seria feito
 ./install.sh             # aplica
 ```
+
+Sem git (máquina zerada) — baixa os arquivos direto do GitHub, sem clonar:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/fabiomaciel/dotenv/main/install-raw.sh | bash
+cd dotenv
+./install.sh
+```
+
+O `install-raw.sh` só baixa o projeto para `./dotenv`; ele não instala nada.
 
 Depois: reinicie o Ghostty e abra o `nvim` uma vez (ele termina de instalar os LSPs).
 

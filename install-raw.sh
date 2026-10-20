@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Downloads this repo file by file from GitHub's raw URLs into ./dotenv.
+# Meant for machines that do not have git yet: only curl (and tar) are needed.
+#
+# Usage: ./install-raw.sh [--dry-run]
+#
+# The file list comes from the GitHub API, so it never goes stale.
+
+set -euo pipefail
+
+REPO="fabiomaciel/dotenv"
+BRANCH="main"
+DEST="dotenv"
+
+DRY_RUN=0
+case "${1:-}" in
+  --dry-run) DRY_RUN=1 ;;
+  "") ;;
+  *)
+    echo "Usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
+
+API="https://api.github.com/repos/$REPO/git/trees/$BRANCH?recursive=1"
+RAW="https://raw.githubusercontent.com/$REPO/$BRANCH"
+
+log()  { printf '  %s\n' "$*"; }
+head_() { printf '\n==> %s\n' "$*"; }
+ok()   { printf '  [ok] %s\n' "$*"; }
+warn() { printf '  [warn] %s\n' "$*" >&2; }
+
+(( DRY_RUN )) && echo "DRY RUN: nothing will be changed."
+
+if ! command -v curl >/dev/null 2>&1; then
+  warn "curl é necessário"
+  exit 1
+fi
+
+if [[ -e "$DEST" ]] && [[ -n "$(ls -A "$DEST" 2>/dev/null)" ]]; then
+  warn "$DEST já existe e não está vazio; remova ou rode em outro diretório"
+  exit 1
+fi
+
+head_ "Listando arquivos"
+# Lists the files on the default branch through the GitHub API. `gh` is used
+# when available (higher rate limit); curl is the fallback, so this works on a
+# machine without git or gh.
+if command -v gh >/dev/null 2>&1; then
+  tree="$(gh api "repos/$REPO/git/trees/$BRANCH?recursive=1" 2>/dev/null)" || tree=""
+fi
+if [[ -z "${tree:-}" ]]; then
+  tree="$(curl -fsSL "$API")" || {
+    warn "não foi possível listar os arquivos de $REPO@$BRANCH"
+    warn "sem conexão? confira https://github.com/$REPO"
+    exit 1
+  }
+fi
+
+# Each entry is "blob<TAB>path<TAB>executable" for regular files only.
+entries="$(printf '%s\n' "$tree" | tr -d '\n' | grep -oE '\{[^{}]*"type": *"blob"[^{}]*\}' | while read -r obj; do
+  path="$(printf '%s' "$obj" | grep -oE '"path": *"[^"]*"' | cut -d'"' -f4)"
+  mode="$(printf '%s' "$obj" | grep -oE '"mode": *"[^"]*"' | cut -d'"' -f4)"
+  [[ -n "$path" ]] || continue
+  printf '%s\t%s\n' "$path" "$([[ "$mode" == "100755" ]] && echo 1 || echo 0)"
+done)"
+
+count="$(printf '%s\n' "$entries" | grep -c . || true)"
+if (( count == 0 )); then
+  warn "nenhum arquivo encontrado em $REPO@$BRANCH"
+  exit 1
+fi
+ok "$count arquivos em $REPO@$BRANCH"
+
+head_ "Baixando para $DEST/"
+while IFS=$'\t' read -r path executable; do
+  [[ -n "$path" ]] || continue
+  mkdir -p "$DEST/$(dirname "$path")"
+  if (( DRY_RUN )); then
+    log "would fetch $path"
+    continue
+  fi
+  if ! curl -fsSL "$RAW/$path" -o "$DEST/$path"; then
+    warn "falhou: $path"
+    exit 1
+  fi
+  (( executable )) && chmod +x "$DEST/$path"
+  log "$path"
+done <<< "$entries"
+
+head_ "Done"
+if (( DRY_RUN )); then
+  echo "  Nada foi baixado. Rode sem --dry-run para baixar."
+  exit 0
+fi
+echo "  Repositório montado em $(pwd)/$DEST"
+echo "  Para instalar: cd $DEST && ./install.sh"
