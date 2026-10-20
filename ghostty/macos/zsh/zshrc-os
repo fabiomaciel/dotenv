@@ -33,7 +33,7 @@ fi
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 # Prompt OS icon: ghost (Tux is Linux-only).
-typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION=$'\uF02A'
+typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION=$'\U000F02A0'
 
 # Plugins (paths differ between Apple Silicon and Intel, so probe both)
 for dir in /opt/homebrew/share /usr/local/share /usr/share; do
