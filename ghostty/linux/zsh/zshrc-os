@@ -1,4 +1,4 @@
-# Linux-specific zsh block, managed by ghostty/linux/install.sh.
+# Linux-specific zsh block, managed by ghostty/linux/install.
 # Only sourced on Linux; paths below do not exist on macOS.
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Entrypoint: detects the OS and hands over to git/<os>/install.sh.
+# Entrypoint: detects the OS and hands over to git/<os>/install.
 #
-# Usage: ./git/install.sh [--dry-run]
+# Usage: ./git/install [--dry-run]
 
 set -euo pipefail
 
@@ -16,4 +16,4 @@ case "$(uname -s)" in
     ;;
 esac
 
-exec "$GIT_DIR/$OS/install.sh" "$@"
+exec "$GIT_DIR/$OS/install" "$@"

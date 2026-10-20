@@ -1,5 +1,5 @@
 # Ghostty configuration (macOS)
-# Installed to ~/.config/ghostty/config by ghostty/macos/install.sh (with @GHOSTTY_DIR@ rendered).
+# Installed to ~/.config/ghostty/config by ghostty/macos/install (with @GHOSTTY_DIR@ rendered).
 
 config-file = ?@GHOSTTY_DIR@/config
 

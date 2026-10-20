@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Entrypoint: detects the OS and hands over to ghostty/<os>/install.sh.
+# Entrypoint: detects the OS and hands over to ghostty/<os>/install.
 #
-# Usage: ./ghostty/install.sh [--dry-run]
+# Usage: ./ghostty/install [--dry-run]
 
 set -euo pipefail
 
@@ -16,4 +16,4 @@ case "$(uname -s)" in
     ;;
 esac
 
-exec "$OS_DIR/install.sh" "$@"
+exec "$OS_DIR/install" "$@"

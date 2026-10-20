@@ -1,4 +1,4 @@
-# Shared zsh block, managed by ghostty/install.sh.
+# Shared zsh block, managed by ghostty/install.
 # Everything here must work on both Linux and macOS.
 
 # Shared env vars and aliases

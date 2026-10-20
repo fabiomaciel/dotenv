@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Entrypoint: detects the OS and hands over to nvim/<os>/install.sh.
+# Entrypoint: detects the OS and hands over to nvim/<os>/install.
 #
-# Usage: ./nvim/install.sh [--dry-run]
+# Usage: ./nvim/install [--dry-run]
 
 set -euo pipefail
 
@@ -16,4 +16,4 @@ case "$(uname -s)" in
     ;;
 esac
 
-exec "$NVIM_DIR/$OS/install.sh" "$@"
+exec "$NVIM_DIR/$OS/install" "$@"

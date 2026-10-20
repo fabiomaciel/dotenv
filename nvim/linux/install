@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Linux installer for the Neovim setup.
-# Run through nvim/install.sh, or directly: ./nvim/linux/install.sh [--dry-run]
+# Run through nvim/install, or directly: ./nvim/linux/install [--dry-run]
 
 set -euo pipefail
 

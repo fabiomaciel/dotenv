@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # macOS installer for the Neovim setup.
-# Run through nvim/install.sh, or directly: ./nvim/macos/install.sh [--dry-run]
+# Run through nvim/install, or directly: ./nvim/macos/install [--dry-run]
 
 set -euo pipefail
 

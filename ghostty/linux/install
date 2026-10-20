@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Linux installer for the Ghostty + zsh setup.
-# Run through ghostty/install.sh, or directly: ./ghostty/linux/install.sh [--dry-run]
+# Run through ghostty/install, or directly: ./ghostty/linux/install [--dry-run]
 
 set -euo pipefail
 
@@ -110,7 +110,7 @@ render_zshrc() {
   tmp="$(mktemp)"
 
   {
-    echo "$begin (managed by ghostty/install.sh; edits inside this block are overwritten)"
+    echo "$begin (managed by ghostty/install; edits inside this block are overwritten)"
     echo "# OS: linux"
     echo
     echo "# Shared block"
@@ -195,7 +195,7 @@ ensure_oh_my_zsh() {
   if pkg_install oh-my-zsh; then
     return 0
   fi
-  if run sh -c 'command -v git >/dev/null && RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'; then
+  if run sh -c 'command -v git >/dev/null && RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install)"'; then
     log "installed oh-my-zsh (git)"
     return 0
   fi

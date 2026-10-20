@@ -2,7 +2,7 @@
 # Downloads this repo file by file from GitHub's raw URLs into ./dotenv.
 # Meant for machines that do not have git yet: only curl (and tar) are needed.
 #
-# Usage: ./install-raw.sh [--dry-run]
+# Usage: ./install-raw [--dry-run]
 #
 # The file list comes from the GitHub API, so it never goes stale.
 
@@ -94,4 +94,4 @@ if (( DRY_RUN )); then
   exit 0
 fi
 echo "  Repositório montado em $(pwd)/$DEST"
-echo "  Para instalar: cd $DEST && ./install.sh"
+echo "  Para instalar: cd $DEST && ./install"

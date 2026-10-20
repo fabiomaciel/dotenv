@@ -9,19 +9,19 @@ Com git instalado:
 ```sh
 git clone git@github.com:fabiomaciel/dotenv.git ~/git/dotenv
 cd ~/git/dotenv
-./install.sh --dry-run   # mostra o que seria feito
-./install.sh             # aplica
+./install --dry-run   # mostra o que seria feito
+./install             # aplica
 ```
 
 Sem git (máquina zerada) — baixa os arquivos direto do GitHub, sem clonar:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/fabiomaciel/dotenv/main/install-raw.sh | bash
+curl -fsSL https://raw.githubusercontent.com/fabiomaciel/dotenv/main/install-raw | bash
 cd dotenv
-./install.sh
+./install
 ```
 
-O `install-raw.sh` só baixa o projeto para `./dotenv`; ele não instala nada.
+O `install-raw` só baixa o projeto para `./dotenv`; ele não instala nada.
 
 Depois: reinicie o Ghostty e abra o `nvim` uma vez (ele termina de instalar os LSPs).
 
@@ -35,7 +35,7 @@ O `git/` é interativo: pergunta nome, e-mail e se o GitHub usa ssh ou https.
 | `nvim/` | Neovim com lazy.nvim, os plugins do `lazy-lock.json`, LSPs e tree-sitter |
 | `git/` | Identidade do git (nome/e-mail), protocolo ssh ou https, chave SSH registrada no GitHub via `gh`, e credential helper para o https não pedir senha |
 
-Cada pasta tem um `install.sh` próprio, que detecta o OS e chama `linux/install.sh` ou `macos/install.sh`. O `install.sh` da raiz roda os três.
+Cada pasta tem um `install` próprio, que detecta o OS e chama `linux/install` ou `macos/install`. O `install` da raiz roda os três.
 
 ## Como funciona
 

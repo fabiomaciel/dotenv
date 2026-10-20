@@ -5,7 +5,7 @@
 # prepares the SSH key or the gh credential helper, and registers the key on
 # GitHub through gh when needed.
 #
-# Usage: install.sh <linux|macos> [--dry-run]
+# Usage: install <linux|macos> [--dry-run]
 
 set -euo pipefail
 

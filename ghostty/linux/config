@@ -1,5 +1,5 @@
 # Ghostty configuration (Linux)
-# Installed to ~/.config/ghostty/config by ghostty/linux/install.sh (with @GHOSTTY_DIR@ rendered).
+# Installed to ~/.config/ghostty/config by ghostty/linux/install (with @GHOSTTY_DIR@ rendered).
 
 config-file = ?@GHOSTTY_DIR@/config
 

@@ -1,4 +1,4 @@
-# macOS-specific zsh block, managed by ghostty/macos/install.sh.
+# macOS-specific zsh block, managed by ghostty/macos/install.
 # Only sourced on macOS; uses Homebrew paths resolved by the installer.
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.

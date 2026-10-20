@@ -1,1 +1,47 @@
-teste:
+#!/usr/bin/env bash
+# Installs every setup in this repo, for the current OS.
+#
+# Usage: ./install [--dry-run]
+
+set -euo pipefail
+
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+DRY_RUN=0
+case "${1:-}" in
+  --dry-run) DRY_RUN=1 ;;
+  "") ;;
+  *)
+    echo "Usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
+
+case "$(uname -s)" in
+  Linux)  OS=linux ;;
+  Darwin) OS=macos ;;
+  *)
+    echo "Unsupported OS: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+# Setup directories, in install order.
+SETUPS=(ghostty nvim git)
+
+args=()
+(( DRY_RUN )) && args+=(--dry-run)
+
+(( DRY_RUN )) && echo "DRY RUN: nothing will be changed."
+echo "Installing all setups for $OS: ${SETUPS[*]}"
+echo "Repo: $REPO_DIR"
+
+for setup in "${SETUPS[@]}"; do
+  printf '\n===== %s =====\n' "$setup"
+  if ! "$REPO_DIR/$setup/install" "${args[@]}"; then
+    echo "  [fail] $setup install failed" >&2
+    exit 1
+  fi
+done
+
+printf '\nAll setups installed. Restart Ghostty and open nvim to pick up the configuration.\n'
