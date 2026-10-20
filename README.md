@@ -1,6 +1,6 @@
 # dotenv
 
-Configuração do meu terminal, versionada. Um script instala tudo — Ghostty, zsh e Neovim — igual em Linux e macOS.
+Configuração do meu ambiente, versionada. Um script instala tudo — Ghostty, zsh, Neovim e git — igual em Linux e macOS.
 
 ## Como usar
 
@@ -13,14 +13,17 @@ cd ~/git/dotenv
 
 Depois: reinicie o Ghostty e abra o `nvim` uma vez (ele termina de instalar os LSPs).
 
+O `git/` é interativo: pergunta nome, e-mail e se o GitHub usa ssh ou https.
+
 ## O que tem
 
 | Pasta | O que instala |
 |---|---|
 | `ghostty/` | Ghostty, zsh (oh-my-zsh, powerlevel10k, plugins), fonte MesloLGS, `.zshrc`, `.bashrc`, `.p10k.zsh` |
 | `nvim/` | Neovim com lazy.nvim, os plugins do `lazy-lock.json`, LSPs e tree-sitter |
+| `git/` | Identidade do git (nome/e-mail), protocolo ssh ou https, chave SSH registrada no GitHub via `gh`, e credential helper para o https não pedir senha |
 
-Cada pasta tem um `install.sh` próprio, que detecta o OS e chama `linux/install.sh` ou `macos/install.sh`. O `install.sh` da raiz roda os dois.
+Cada pasta tem um `install.sh` próprio, que detecta o OS e chama `linux/install.sh` ou `macos/install.sh`. O `install.sh` da raiz roda os três.
 
 ## Como funciona
 

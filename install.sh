@@ -27,7 +27,7 @@ case "$(uname -s)" in
 esac
 
 # Setup directories, in install order.
-SETUPS=(ghostty nvim)
+SETUPS=(ghostty nvim git)
 
 args=()
 (( DRY_RUN )) && args+=(--dry-run)

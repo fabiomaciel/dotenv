@@ -346,6 +346,50 @@ register_ssh_key() {
 }
 
 # ---------------------------------------------------------------------------
+# Credential helper (https)
+# ---------------------------------------------------------------------------
+
+# Sets the helper so git never asks for the password again:
+# libsecret on Linux (falls back to a 1h cache), osxkeychain on macOS.
+# The gh helper is only a last resort when the native one is unavailable.
+configure_credential_helper() {
+  local helper="" fallback=""
+
+  case "$OS" in
+    linux)
+      if command -v git-credential-libsecret >/dev/null 2>&1 || [[ -x /usr/lib/git-core/git-credential-libsecret ]]; then
+        helper=libsecret
+      fi
+      fallback=cache
+      ;;
+    macos)
+      helper=osxkeychain
+      ;;
+  esac
+
+  if [[ -n "$helper" ]]; then
+    run git config --global credential.helper "$helper"
+    ok "credential.helper = $helper"
+    if [[ -n "$fallback" ]] && [[ "$fallback" != "$helper" ]]; then
+      # A second helper is only consulted when the first one has no credential.
+      run git config --global --add credential.helper "$fallback"
+      log "fallback: credential.helper += $fallback"
+    fi
+    return 0
+  fi
+
+  warn "credential helper nativo não disponível ($OS)"
+  if gh_ready || { ensure_gh && ensure_gh_login; }; then
+    if run gh auth setup-git; then
+      ok "gh configurado como credential helper"
+      return 0
+    fi
+  fi
+  warn "configure um credential helper manualmente"
+  FAILED+=("credential helper")
+}
+
+# ---------------------------------------------------------------------------
 # Protocol
 # ---------------------------------------------------------------------------
 
@@ -360,15 +404,8 @@ if [[ "$PROTOCOL" == ssh ]]; then
   fi
 else
   head_ "HTTPS"
-  if confirm "Usar o gh como credential helper (gh auth setup-git)?"; then
-    if gh_ready || { ensure_gh && ensure_gh_login; }; then
-      if run gh auth setup-git; then
-        ok "gh configurado como credential helper"
-      else
-        warn "gh auth setup-git falhou"
-        FAILED+=("gh auth setup-git")
-      fi
-    fi
+  if confirm "Configurar credential helper para não pedir senha de novo?"; then
+    configure_credential_helper
   else
     skip "credential helper não configurado"
   fi
