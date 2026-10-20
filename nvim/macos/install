@@ -120,13 +120,26 @@ if [[ -z "$BREW" ]]; then
   (( DRY_RUN )) || exit 1
 fi
 
+# True when the formula ships a bottle for this OS/version, so `--force-bottle`
+# is safe to pass. Formulas without a bottle must still build from source.
+brew_has_bottle() {
+  local json
+  [[ -n "$BREW" ]] || return 1
+  json="$("$BREW" info --json=v2 --formula "$1" 2>/dev/null)" || return 1
+  grep -qE '"bottle" *: *\{[^}]*"stable"' <<< "$json"
+}
+
 brew_install() {
-  if [[ -n "$BREW" ]] && "$BREW" list --formula "$1" >/dev/null 2>&1; then
-    ok "formula $1 installed"
+  local formula="$1" args=()
+  if [[ -n "$BREW" ]] && "$BREW" list --formula "$formula" >/dev/null 2>&1; then
+    ok "formula $formula installed"
     return 0
   fi
-  if [[ -n "$BREW" ]] && run "$BREW" install "$1"; then
-    log "installed $1 (brew)"
+  if brew_has_bottle "$formula"; then
+    args+=(--force-bottle)
+  fi
+  if [[ -n "$BREW" ]] && run "$BREW" install "${args[@]}" "$formula"; then
+    log "installed $formula (brew${args:+ --force-bottle})"
     return 0
   fi
   return 1

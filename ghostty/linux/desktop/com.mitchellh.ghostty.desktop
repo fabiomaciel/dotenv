@@ -1,0 +1,30 @@
+# Launch Ghostty with GTK's built-in dead key composition.
+# The packaged .desktop starts Ghostty without GTK_IM_MODULE, and on Wayland
+# GTK 4.20+ drops dead keys (~, ´, `) when no input method is present.
+# Overriding Exec here keeps the menu launcher working.
+# See https://github.com/ghostty-org/ghostty/issues/8899
+
+[Desktop Entry]
+Version=1.0
+Name=Ghostty
+Type=Application
+Comment=A terminal emulator
+TryExec=/usr/bin/ghostty
+Exec=env GTK_IM_MODULE=simple /usr/bin/ghostty --gtk-single-instance=true
+Icon=com.mitchellh.ghostty
+Categories=System;TerminalEmulator;
+Keywords=terminal;tty;pty;
+StartupNotify=true
+StartupWMClass=com.mitchellh.ghostty
+Terminal=false
+Actions=new-window;
+X-GNOME-UsesNotifications=true
+X-TerminalArgExec=-e
+X-TerminalArgTitle=--title=
+X-TerminalArgAppId=--class=
+X-TerminalArgDir=--working-directory=
+X-TerminalArgHold=--wait-after-command
+
+[Desktop Action new-window]
+Name=New Window
+Exec=env GTK_IM_MODULE=simple /usr/bin/ghostty --gtk-single-instance=true

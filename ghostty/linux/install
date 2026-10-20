@@ -260,6 +260,14 @@ ensure_font
 head_ "Ghostty config"
 install_rendered "$OS_DIR/config" "$GHOSTTY_DIR" "$HOME/.config/ghostty/config"
 
+# Dead keys on Wayland: see environment.d/10-ghostty.conf for why.
+head_ "Dead keys (Wayland)"
+install_file "$OS_DIR/environment.d/10-ghostty.conf" "$HOME/.config/environment.d/10-ghostty.conf"
+install_file "$OS_DIR/desktop/com.mitchellh.ghostty.desktop" "$HOME/.local/share/applications/com.mitchellh.ghostty.desktop"
+if command -v update-desktop-database >/dev/null 2>&1; then
+  run update-desktop-database "$HOME/.local/share/applications"
+fi
+
 head_ "zsh"
 install_file "$GHOSTTY_DIR/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
 if [[ ! -e "$HOME/.bashrc" ]]; then
