@@ -176,7 +176,7 @@ brew_has_bottle() {
   local json
   [[ -n "$BREW" ]] || return 1
   json="$("$BREW" info --json=v2 --formula "$1" 2>/dev/null)" || return 1
-  grep -qE '"bottle" *: *\{[^}]*"stable"' <<< "$json"
+  printf '%s' "$json" | grep -qE '"bottle" *: *\{[^}]*"stable"'
 }
 
 brew_install() {
@@ -301,7 +301,7 @@ fi
 render_zshrc
 
 head_ "Done"
-if (( ${#FAILED[@]} )); then
-  warn "skipped: ${FAILED[*]}"
+if (( ${#FAILED[@]:-0} )); then
+  warn "skipped: ${FAILED[*]:-}"
 fi
 echo "  Restart Ghostty (or open a new tab) to pick up the configuration."

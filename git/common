@@ -126,16 +126,15 @@ while [[ -z "$EMAIL" && -t 0 ]]; do
 done
 require "o e-mail" "$EMAIL"
 
-PROTOCOL="$(ask 'Protocolo para o GitHub — ssh ou https [ssh]: ' ssh)"
-PROTOCOL="${PROTOCOL,,}"
+# Lowercase with tr: ${var,,} is bash 4+, and macOS ships bash 3.2.
+PROTOCOL="$(ask 'Protocolo para o GitHub — ssh ou https [ssh]: ' ssh | tr '[:upper:]' '[:lower:]')"
 while [[ "$PROTOCOL" != ssh && "$PROTOCOL" != https ]]; do
   if [[ ! -t 0 ]]; then
     PROTOCOL=ssh
     break
   fi
   warn "escolha ssh ou https"
-  PROTOCOL="$(ask 'Protocolo para o GitHub — ssh ou https [ssh]: ' ssh)"
-  PROTOCOL="${PROTOCOL,,}"
+  PROTOCOL="$(ask 'Protocolo para o GitHub — ssh ou https [ssh]: ' ssh | tr '[:upper:]' '[:lower:]')"
 done
 
 log "nome:      $NAME"
@@ -224,7 +223,8 @@ gh_install_release() {
     warn "não foi possível descobrir a versão mais recente do gh"
     return 1
   fi
-  url="${url/\$\{version\}/$version}"
+  # Literal ${version} placeholder, replaced with sed (${var/a/b} is bash 4+).
+  url="$(printf '%s' "$url" | sed "s/\${version}/$version/")"
   tmp="$(mktemp -d)"
   if curl -fsSL "$url" | tar -xz -C "$tmp" && compgen -G "$tmp/gh_*/bin/gh" >/dev/null; then
     mkdir -p "$HOME/.local/bin"
@@ -412,7 +412,7 @@ else
 fi
 
 head_ "Done"
-if (( ${#FAILED[@]} )); then
-  warn "skipped: ${FAILED[*]}"
+if (( ${#FAILED[@]:-0} )); then
+  warn "skipped: ${FAILED[*]:-}"
 fi
 echo "  git configurado para $NAME <$EMAIL> ($PROTOCOL)"

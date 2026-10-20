@@ -278,7 +278,7 @@ fi
 render_zshrc
 
 head_ "Done"
-if (( ${#FAILED[@]} )); then
-  warn "skipped: ${FAILED[*]}"
+if (( ${#FAILED[@]:-0} )); then
+  warn "skipped: ${FAILED[*]:-}"
 fi
 echo "  Restart Ghostty (or open a new tab) to pick up the configuration."
