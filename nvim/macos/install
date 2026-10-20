@@ -138,7 +138,7 @@ brew_install() {
   if brew_has_bottle "$formula"; then
     args+=(--force-bottle)
   fi
-  if [[ -n "$BREW" ]] && run "$BREW" install "${args[@]}" "$formula"; then
+  if [[ -n "$BREW" ]] && run "$BREW" install ${args[@]+"${args[@]}"} "$formula"; then
     log "installed $formula (brew${args:+ --force-bottle})"
     return 0
   fi
