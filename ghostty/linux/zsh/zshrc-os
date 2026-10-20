@@ -1,7 +1,11 @@
 # Linux-specific zsh block, managed by ghostty/linux/install.
 # Only sourced on Linux; paths below do not exist on macOS.
+#
+# Order matters: the Powerlevel10k instant prompt must be the very first thing
+# loaded, and powerlevel10k itself must be sourced exactly once. The CachyOS
+# config sources both the theme and ~/.p10k.zsh, so this file does not.
 
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Enable Powerlevel10k instant prompt.
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi

@@ -113,11 +113,13 @@ render_zshrc() {
     echo "$begin (managed by ghostty/install; edits inside this block are overwritten)"
     echo "# OS: linux"
     echo
-    echo "# Shared block"
-    echo "source \"$GHOSTTY_DIR/zsh/zshrc-common\""
-    echo
+    # The OS block comes first: its instant prompt must run before anything
+    # else in ~/.zshrc, and it is the only place that loads powerlevel10k.
     echo "# Linux-specific block"
     echo "source \"$OS_DIR/zsh/zshrc-os\""
+    echo
+    echo "# Shared block"
+    echo "source \"$GHOSTTY_DIR/zsh/zshrc-common\""
     echo "$end"
   } > "$tmp"
 
