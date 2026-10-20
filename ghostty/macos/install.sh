@@ -1,0 +1,294 @@
+#!/usr/bin/env bash
+# macOS installer for the Ghostty + zsh setup.
+# Run through ghostty/install.sh, or directly: ./ghostty/macos/install.sh [--dry-run]
+
+set -euo pipefail
+
+OS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GHOSTTY_DIR="$(cd "$OS_DIR/.." && pwd)"
+
+DRY_RUN=0
+case "${1:-}" in
+  --dry-run) DRY_RUN=1 ;;
+  "") ;;
+  *)
+    echo "Usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+log()   { printf '  %s\n' "$*"; }
+head_() { printf '\n==> %s\n' "$*"; }
+ok()    { printf '  [ok] %s\n' "$*"; }
+skip()  { printf '  [skip] %s\n' "$*"; }
+warn()  { printf '  [warn] %s\n' "$*" >&2; }
+
+FAILED=()
+
+run() {
+  if (( DRY_RUN )); then
+    log "would run: $*"
+    return 0
+  fi
+  "$@"
+}
+
+# Asks whether to continue without a failed optional step.
+# Without a TTY the answer is always yes (continue).
+confirm_continue() {
+  local what="$1"
+  if (( DRY_RUN )) || [[ ! -t 0 ]]; then
+    skip "continuing without $what"
+    return 0
+  fi
+  local answer
+  read -r -p "  Continue without $what? [Y/n] " answer || answer="y"
+  case "$answer" in
+    ""|y|Y|yes|YES) skip "continuing without $what"; return 0 ;;
+    *) warn "aborting at your request"; exit 1 ;;
+  esac
+}
+
+# Asks a yes/no question; defaults to yes without a TTY.
+confirm() {
+  local question="$1"
+  if (( DRY_RUN )) || [[ ! -t 0 ]]; then
+    return 0
+  fi
+  local answer
+  read -r -p "  $question [Y/n] " answer || answer="y"
+  case "$answer" in
+    ""|y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+backup() {
+  local file="$1"
+  local dest="$file.bak.$(date +%Y%m%d-%H%M%S)"
+  run mv "$file" "$dest"
+  log "backed up $file -> $dest"
+}
+
+# Writes $1 to $2, only if the content differs.
+install_file() {
+  local src="$1" dest="$2"
+  (( DRY_RUN )) || mkdir -p "$(dirname "$dest")"
+  if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+    ok "$dest up to date"
+    return 0
+  fi
+  if [[ -e "$dest" ]]; then
+    backup "$dest"
+  fi
+  run cp "$src" "$dest"
+  log "installed $dest"
+}
+
+# Writes $1 (with $2 substituted for @GHOSTTY_DIR@) to $3, only if the content differs.
+# The OS-specific Ghostty config is rendered rather than symlinked: Ghostty resolves
+# `config-file` relative to the config's location, which a symlink breaks.
+install_rendered() {
+  local src="$1" ghostty_dir="$2" dest="$3"
+  local tmp
+  tmp="$(mktemp)"
+  sed "s|@GHOSTTY_DIR@|$ghostty_dir|g" "$src" > "$tmp"
+  install_file "$tmp" "$dest"
+  rm -f "$tmp"
+}
+
+# Renders a .zshrc from the zshrc-common + zshrc-os blocks, managed between markers.
+render_zshrc() {
+  local dest="$HOME/.zshrc"
+  local begin='# >>> dotenv setup'
+  local end='# <<< dotenv setup'
+  local tmp
+  tmp="$(mktemp)"
+
+  {
+    echo "$begin (managed by ghostty/install.sh; edits inside this block are overwritten)"
+    echo "# OS: macos"
+    echo
+    echo "# Shared block"
+    echo "source \"$GHOSTTY_DIR/zsh/zshrc-common\""
+    echo
+    echo "# macOS-specific block"
+    echo "source \"$OS_DIR/zsh/zshrc-os\""
+    echo "$end"
+  } > "$tmp"
+
+  if [[ -f "$dest" ]] && grep -qF "$begin" "$dest"; then
+    # Replace only the managed block, keep everything else.
+    local new
+    new="$(mktemp)"
+    awk -v begin="$begin" -v end="$end" -v block="$tmp" '
+      index($0, begin) == 1 { while ((getline line < block) > 0) print line; skipping = 1; next }
+      index($0, end) == 1   { skipping = 0; next }
+      !skipping             { print }
+    ' "$dest" > "$new"
+    if cmp -s "$new" "$dest"; then
+      ok "$dest block up to date"
+    else
+      run cp "$new" "$dest"
+      log "updated managed block in $dest"
+    fi
+    rm -f "$new"
+  elif [[ -e "$dest" ]]; then
+    local new
+    new="$(mktemp)"
+    { cat "$tmp"; echo; cat "$dest"; } > "$new"
+    backup "$dest"
+    run cp "$new" "$dest"
+    rm -f "$new"
+    log "prepended managed block to $dest"
+  else
+    run cp "$tmp" "$dest"
+    log "created $dest"
+  fi
+  rm -f "$tmp"
+}
+
+# ---------------------------------------------------------------------------
+# Package installation (brew -> git)
+# ---------------------------------------------------------------------------
+
+BREW=""
+if [[ -x /opt/homebrew/bin/brew ]]; then
+  BREW=/opt/homebrew/bin/brew
+elif [[ -x /usr/local/bin/brew ]]; then
+  BREW=/usr/local/bin/brew
+elif command -v brew >/dev/null 2>&1; then
+  BREW="$(command -v brew)"
+fi
+
+if [[ -z "$BREW" ]]; then
+  warn "Homebrew is required on macOS but was not found (https://brew.sh)."
+  (( DRY_RUN )) || exit 1
+fi
+
+brew_install() {
+  if [[ -n "$BREW" ]] && "$BREW" list --formula "$1" >/dev/null 2>&1; then
+    ok "formula $1 installed"
+    return 0
+  fi
+  if [[ -n "$BREW" ]] && run "$BREW" install "$1"; then
+    log "installed $1 (brew)"
+    return 0
+  fi
+  return 1
+}
+
+brew_install_cask() {
+  if [[ -n "$BREW" ]] && "$BREW" list --cask "$1" >/dev/null 2>&1; then
+    ok "cask $1 installed"
+    return 0
+  fi
+  if [[ -n "$BREW" ]] && run "$BREW" install --cask "$1"; then
+    log "installed $1 (brew cask)"
+    return 0
+  fi
+  return 1
+}
+
+ensure_formula() {
+  local formula="$1" what="$2"
+  if brew_install "$formula"; then
+    return 0
+  fi
+  warn "could not install $formula"
+  FAILED+=("$what")
+  confirm_continue "$what"
+}
+
+ensure_oh_my_zsh() {
+  if [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]]; then
+    ok "oh-my-zsh installed"
+    return 0
+  fi
+  if brew_install oh-my-zsh; then
+    return 0
+  fi
+  if run env RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"; then
+    log "installed oh-my-zsh (git)"
+    return 0
+  fi
+  warn "could not install oh-my-zsh"
+  FAILED+=("oh-my-zsh")
+  confirm_continue "oh-my-zsh"
+}
+
+ensure_powerlevel10k() {
+  local theme="$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+  if [[ -n "$BREW" ]] && "$BREW" list --formula powerlevel10k >/dev/null 2>&1; then
+    ok "powerlevel10k installed"
+    return 0
+  fi
+  if [[ -d "$theme" ]]; then
+    ok "powerlevel10k installed (git)"
+    return 0
+  fi
+  if brew_install powerlevel10k; then
+    return 0
+  fi
+  if run git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$theme"; then
+    log "installed powerlevel10k (git)"
+    return 0
+  fi
+  warn "could not install powerlevel10k"
+  FAILED+=("powerlevel10k")
+  confirm_continue "powerlevel10k"
+}
+
+ensure_font() {
+  if system_profiler SPFontsDataType 2>/dev/null | grep -qi 'MesloLGS Nerd Font'; then
+    ok "MesloLGS Nerd Font installed"
+    return 0
+  fi
+  if brew_install_cask font-meslo-lg-nerd-font; then
+    return 0
+  fi
+  warn "could not install font-meslo-lg-nerd-font"
+  FAILED+=("MesloLGS Nerd Font")
+  confirm_continue "the MesloLGS Nerd Font"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+(( DRY_RUN )) && echo "DRY RUN: nothing will be changed."
+echo "Installing Ghostty + zsh setup for macOS"
+echo "Repo: $GHOSTTY_DIR"
+
+head_ "Packages"
+ensure_formula ghostty "Ghostty"
+ensure_formula zsh "zsh"
+ensure_formula zsh-autosuggestions "zsh-autosuggestions"
+ensure_formula zsh-syntax-highlighting "zsh-syntax-highlighting"
+ensure_formula zsh-history-substring-search "zsh-history-substring-search"
+ensure_formula fzf "fzf"
+ensure_oh_my_zsh
+ensure_powerlevel10k
+ensure_font
+
+head_ "Ghostty config"
+install_rendered "$OS_DIR/config" "$GHOSTTY_DIR" "$HOME/.config/ghostty/config"
+
+head_ "zsh"
+install_file "$GHOSTTY_DIR/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+if [[ ! -e "$HOME/.bashrc" ]]; then
+  install_file "$GHOSTTY_DIR/zsh/bashrc-portable" "$HOME/.bashrc"
+else
+  ok "~/.bashrc exists, leaving it as is"
+fi
+render_zshrc
+
+head_ "Done"
+if (( ${#FAILED[@]} )); then
+  warn "skipped: ${FAILED[*]}"
+fi
+echo "  Restart Ghostty (or open a new tab) to pick up the configuration."

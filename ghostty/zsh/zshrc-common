@@ -1,0 +1,10 @@
+# Shared zsh block, managed by ghostty/install.sh.
+# Everything here must work on both Linux and macOS.
+
+# Shared env vars and aliases
+if [[ -r ~/.bashrc ]]; then
+  source ~/.bashrc
+fi
+
+# Prompt
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh

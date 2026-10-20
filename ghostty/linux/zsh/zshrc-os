@@ -1,0 +1,19 @@
+# Linux-specific zsh block, managed by ghostty/linux/install.sh.
+# Only sourced on Linux; paths below do not exist on macOS.
+
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# CachyOS defaults (oh-my-zsh, p10k theme, autosuggestions, syntax highlighting)
+if [[ -r /usr/share/cachyos-zsh-config/cachyos-config.zsh ]]; then
+  source /usr/share/cachyos-zsh-config/cachyos-config.zsh
+fi
+
+# opencode
+export PATH=/home/fabio/.opencode/bin:$PATH
+
+# Java / Maven
+JAVA_HOME=/home/fabio/.local/opt/jdk-26.0.2.1+1
+export PATH=$JAVA_HOME/bin:$HOME/.local/opt/apache-maven-3.9.16/bin:$PATH

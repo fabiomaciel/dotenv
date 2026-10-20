@@ -1,0 +1,11 @@
+# Portable aliases and env vars (shared across OSes).
+# Installed as ~/.bashrc only when the system has none, and sourced by ~/.zshrc.
+
+export SYSTEMD_EDITOR=vim
+export EDITOR=nvim
+export VISUAL=nvim
+export PATH="$HOME/.local/bin:$PATH"
+
+alias ll='ls -la'
+alias vim=nvim
+alias vi=nvim

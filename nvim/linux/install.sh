@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# Linux installer for the Neovim setup.
+# Run through nvim/install.sh, or directly: ./nvim/linux/install.sh [--dry-run]
+
+set -euo pipefail
+
+OS=linux
+OS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NVIM_DIR="$(cd "$OS_DIR/.." && pwd)"
+
+DRY_RUN=0
+case "${1:-}" in
+  --dry-run) DRY_RUN=1 ;;
+  "") ;;
+  *)
+    echo "Usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+log()   { printf '  %s\n' "$*"; }
+head_() { printf '\n==> %s\n' "$*"; }
+ok()    { printf '  [ok] %s\n' "$*"; }
+skip()  { printf '  [skip] %s\n' "$*"; }
+warn()  { printf '  [warn] %s\n' "$*" >&2; }
+
+FAILED=()
+
+run() {
+  if (( DRY_RUN )); then
+    log "would run: $*"
+    return 0
+  fi
+  "$@"
+}
+
+# Asks whether to continue without a failed optional step.
+# Without a TTY the answer is always yes (continue).
+confirm_continue() {
+  local what="$1"
+  if (( DRY_RUN )) || [[ ! -t 0 ]]; then
+    skip "continuing without $what"
+    return 0
+  fi
+  local answer
+  read -r -p "  Continue without $what? [Y/n] " answer || answer="y"
+  case "$answer" in
+    ""|y|Y|yes|YES) skip "continuing without $what"; return 0 ;;
+    *) warn "aborting at your request"; exit 1 ;;
+  esac
+}
+
+# Asks a yes/no question; defaults to yes without a TTY.
+confirm() {
+  local question="$1"
+  if (( DRY_RUN )) || [[ ! -t 0 ]]; then
+    return 0
+  fi
+  local answer
+  read -r -p "  $question [Y/n] " answer || answer="y"
+  case "$answer" in
+    ""|y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+backup() {
+  local file="$1"
+  local dest="$file.bak.$(date +%Y%m%d-%H%M%S)"
+  run mv "$file" "$dest"
+  log "backed up $file -> $dest"
+}
+
+# Points $2 at the repo directory $1, keeping a timestamped backup of whatever was there.
+link_dir() {
+  local src="$1" dest="$2"
+  if [[ -L "$dest" ]]; then
+    if [[ "$(readlink "$dest")" == "$src" ]]; then
+      ok "$dest already linked"
+      return 0
+    fi
+    if confirm "Replace symlink $dest -> $(readlink "$dest") with a link to the repo?"; then
+      run rm "$dest"
+    else
+      skip "$dest left as is"
+      return 1
+    fi
+  elif [[ -e "$dest" ]]; then
+    if confirm "$dest exists. Back it up and replace it with a symlink to the repo?"; then
+      backup "$dest"
+    else
+      skip "$dest left as is"
+      return 1
+    fi
+  fi
+  (( DRY_RUN )) || mkdir -p "$(dirname "$dest")"
+  run ln -s "$src" "$dest"
+  log "linked $dest -> $src"
+}
+
+# ---------------------------------------------------------------------------
+# Package installation (yay -> pacman)
+# ---------------------------------------------------------------------------
+
+has_yay() { command -v yay >/dev/null 2>&1; }
+
+pkg_install() {
+  local pkg="$1"
+  if pacman -Qq "$pkg" >/dev/null 2>&1; then
+    ok "package $pkg installed"
+    return 0
+  fi
+  if has_yay && run yay -S --needed --noconfirm "$pkg"; then
+    log "installed $pkg (yay)"
+    return 0
+  fi
+  if run sudo pacman -S --needed --noconfirm "$pkg"; then
+    log "installed $pkg (pacman)"
+    return 0
+  fi
+  return 1
+}
+
+ensure_pkg() {
+  local pkg="$1" what="${2:-$1}"
+  if pkg_install "$pkg"; then
+    return 0
+  fi
+  warn "could not install $pkg"
+  FAILED+=("$what")
+  confirm_continue "$what"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+(( DRY_RUN )) && echo "DRY RUN: nothing will be changed."
+echo "Installing Neovim setup for Linux"
+echo "Repo: $NVIM_DIR"
+
+head_ "Packages"
+ensure_pkg neovim
+ensure_pkg git
+ensure_pkg tree-sitter-cli "tree-sitter-cli (the tree-sitter binary)"
+ensure_pkg ripgrep
+ensure_pkg fd
+ensure_pkg unzip
+ensure_pkg curl
+ensure_pkg gcc "a C compiler (gcc)"
+
+head_ "Config"
+link_dir "$NVIM_DIR/config" "$HOME/.config/nvim"
+
+head_ "Plugins"
+if (( DRY_RUN )) || command -v nvim >/dev/null 2>&1; then
+  if run nvim --headless "+Lazy! sync" +qa; then
+    ok "plugins synced"
+  else
+    warn "Lazy sync failed; run ':Lazy sync' inside nvim"
+    FAILED+=("Lazy sync")
+  fi
+else
+  warn "nvim not found, skipping plugin sync"
+  FAILED+=("nvim")
+fi
+
+head_ "Done"
+if (( ${#FAILED[@]} )); then
+  warn "skipped: ${FAILED[*]}"
+fi
+echo "  Open nvim; the first start finishes installing LSP servers via Mason."

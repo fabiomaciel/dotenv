@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Entrypoint: detects the OS and hands over to ghostty/<os>/install.sh.
+#
+# Usage: ./ghostty/install.sh [--dry-run]
+
+set -euo pipefail
+
+GHOSTTY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+case "$(uname -s)" in
+  Linux)  OS_DIR="$GHOSTTY_DIR/linux" ;;
+  Darwin) OS_DIR="$GHOSTTY_DIR/macos" ;;
+  *)
+    echo "Unsupported OS: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+exec "$OS_DIR/install.sh" "$@"

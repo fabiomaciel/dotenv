@@ -1,0 +1,276 @@
+#!/usr/bin/env bash
+# Linux installer for the Ghostty + zsh setup.
+# Run through ghostty/install.sh, or directly: ./ghostty/linux/install.sh [--dry-run]
+
+set -euo pipefail
+
+OS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GHOSTTY_DIR="$(cd "$OS_DIR/.." && pwd)"
+
+DRY_RUN=0
+case "${1:-}" in
+  --dry-run) DRY_RUN=1 ;;
+  "") ;;
+  *)
+    echo "Usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+log()   { printf '  %s\n' "$*"; }
+head_() { printf '\n==> %s\n' "$*"; }
+ok()    { printf '  [ok] %s\n' "$*"; }
+skip()  { printf '  [skip] %s\n' "$*"; }
+warn()  { printf '  [warn] %s\n' "$*" >&2; }
+
+FAILED=()
+
+run() {
+  if (( DRY_RUN )); then
+    log "would run: $*"
+    return 0
+  fi
+  "$@"
+}
+
+# Asks whether to continue without a failed optional step.
+# Without a TTY the answer is always yes (continue).
+confirm_continue() {
+  local what="$1"
+  if (( DRY_RUN )) || [[ ! -t 0 ]]; then
+    skip "continuing without $what"
+    return 0
+  fi
+  local answer
+  read -r -p "  Continue without $what? [Y/n] " answer || answer="y"
+  case "$answer" in
+    ""|y|Y|yes|YES) skip "continuing without $what"; return 0 ;;
+    *) warn "aborting at your request"; exit 1 ;;
+  esac
+}
+
+# Asks a yes/no question; defaults to yes without a TTY.
+confirm() {
+  local question="$1"
+  if (( DRY_RUN )) || [[ ! -t 0 ]]; then
+    return 0
+  fi
+  local answer
+  read -r -p "  $question [Y/n] " answer || answer="y"
+  case "$answer" in
+    ""|y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+backup() {
+  local file="$1"
+  local dest="$file.bak.$(date +%Y%m%d-%H%M%S)"
+  run mv "$file" "$dest"
+  log "backed up $file -> $dest"
+}
+
+# Writes $1 to $2, only if the content differs.
+install_file() {
+  local src="$1" dest="$2"
+  (( DRY_RUN )) || mkdir -p "$(dirname "$dest")"
+  if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+    ok "$dest up to date"
+    return 0
+  fi
+  if [[ -e "$dest" ]]; then
+    backup "$dest"
+  fi
+  run cp "$src" "$dest"
+  log "installed $dest"
+}
+
+# Writes $1 (with $2 substituted for @GHOSTTY_DIR@) to $3, only if the content differs.
+# The OS-specific Ghostty config is rendered rather than symlinked: Ghostty resolves
+# `config-file` relative to the config's location, which a symlink breaks.
+install_rendered() {
+  local src="$1" ghostty_dir="$2" dest="$3"
+  local tmp
+  tmp="$(mktemp)"
+  sed "s|@GHOSTTY_DIR@|$ghostty_dir|g" "$src" > "$tmp"
+  install_file "$tmp" "$dest"
+  rm -f "$tmp"
+}
+
+# Renders a .zshrc from the zshrc-common + zshrc-os blocks, managed between markers.
+render_zshrc() {
+  local dest="$HOME/.zshrc"
+  local begin='# >>> dotenv setup'
+  local end='# <<< dotenv setup'
+  local tmp
+  tmp="$(mktemp)"
+
+  {
+    echo "$begin (managed by ghostty/install.sh; edits inside this block are overwritten)"
+    echo "# OS: linux"
+    echo
+    echo "# Shared block"
+    echo "source \"$GHOSTTY_DIR/zsh/zshrc-common\""
+    echo
+    echo "# Linux-specific block"
+    echo "source \"$OS_DIR/zsh/zshrc-os\""
+    echo "$end"
+  } > "$tmp"
+
+  if [[ -f "$dest" ]] && grep -qF "$begin" "$dest"; then
+    # Replace only the managed block, keep everything else.
+    local new
+    new="$(mktemp)"
+    awk -v begin="$begin" -v end="$end" -v block="$tmp" '
+      index($0, begin) == 1 { while ((getline line < block) > 0) print line; skipping = 1; next }
+      index($0, end) == 1   { skipping = 0; next }
+      !skipping             { print }
+    ' "$dest" > "$new"
+    if cmp -s "$new" "$dest"; then
+      ok "$dest block up to date"
+    else
+      run cp "$new" "$dest"
+      log "updated managed block in $dest"
+    fi
+    rm -f "$new"
+  elif [[ -e "$dest" ]]; then
+    local new
+    new="$(mktemp)"
+    { cat "$tmp"; echo; cat "$dest"; } > "$new"
+    backup "$dest"
+    run cp "$new" "$dest"
+    rm -f "$new"
+    log "prepended managed block to $dest"
+  else
+    run cp "$tmp" "$dest"
+    log "created $dest"
+  fi
+  rm -f "$tmp"
+}
+
+# ---------------------------------------------------------------------------
+# Package installation (yay -> pacman -> git)
+# ---------------------------------------------------------------------------
+
+has_yay() { command -v yay >/dev/null 2>&1; }
+
+# Installs a pacman package trying yay, then pacman. Returns non-zero on failure.
+pkg_install() {
+  local pkg="$1"
+  if pacman -Qq "$pkg" >/dev/null 2>&1; then
+    ok "package $pkg installed"
+    return 0
+  fi
+  if has_yay && run yay -S --needed --noconfirm "$pkg"; then
+    log "installed $pkg (yay)"
+    return 0
+  fi
+  if run sudo pacman -S --needed --noconfirm "$pkg"; then
+    log "installed $pkg (pacman)"
+    return 0
+  fi
+  return 1
+}
+
+# Ensures a package, falling back to a Skip prompt on failure.
+ensure_pkg() {
+  local pkg="$1" what="$2"
+  if pkg_install "$pkg"; then
+    return 0
+  fi
+  warn "could not install $pkg"
+  FAILED+=("$what")
+  confirm_continue "$what"
+}
+
+ensure_oh_my_zsh() {
+  if [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" || -f /usr/share/oh-my-zsh/oh-my-zsh.sh ]]; then
+    ok "oh-my-zsh installed"
+    return 0
+  fi
+  if pkg_install oh-my-zsh; then
+    return 0
+  fi
+  if run sh -c 'command -v git >/dev/null && RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'; then
+    log "installed oh-my-zsh (git)"
+    return 0
+  fi
+  warn "could not install oh-my-zsh"
+  FAILED+=("oh-my-zsh")
+  confirm_continue "oh-my-zsh"
+}
+
+ensure_powerlevel10k() {
+  if [[ -d /usr/share/zsh-theme-powerlevel10k ]]; then
+    ok "powerlevel10k installed"
+    return 0
+  fi
+  if pkg_install zsh-theme-powerlevel10k; then
+    return 0
+  fi
+  local theme="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+  if [[ -d "$theme" ]]; then
+    ok "powerlevel10k installed (git)"
+    return 0
+  fi
+  if run git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$theme"; then
+    log "installed powerlevel10k (git)"
+    return 0
+  fi
+  warn "could not install powerlevel10k"
+  FAILED+=("powerlevel10k")
+  confirm_continue "powerlevel10k"
+}
+
+ensure_font() {
+  if pacman -Qq ttf-meslo-nerd >/dev/null 2>&1; then
+    ok "ttf-meslo-nerd installed"
+    return 0
+  fi
+  if pkg_install ttf-meslo-nerd; then
+    return 0
+  fi
+  warn "could not install ttf-meslo-nerd"
+  FAILED+=("MesloLGS Nerd Font")
+  confirm_continue "the MesloLGS Nerd Font"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+(( DRY_RUN )) && echo "DRY RUN: nothing will be changed."
+echo "Installing Ghostty + zsh setup for Linux"
+echo "Repo: $GHOSTTY_DIR"
+
+head_ "Packages"
+ensure_pkg zsh "zsh"
+ensure_pkg zsh-autosuggestions "zsh-autosuggestions"
+ensure_pkg zsh-syntax-highlighting "zsh-syntax-highlighting"
+ensure_pkg zsh-history-substring-search "zsh-history-substring-search"
+ensure_pkg fzf "fzf"
+ensure_oh_my_zsh
+ensure_powerlevel10k
+ensure_font
+
+head_ "Ghostty config"
+install_rendered "$OS_DIR/config" "$GHOSTTY_DIR" "$HOME/.config/ghostty/config"
+
+head_ "zsh"
+install_file "$GHOSTTY_DIR/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+if [[ ! -e "$HOME/.bashrc" ]]; then
+  install_file "$GHOSTTY_DIR/zsh/bashrc-portable" "$HOME/.bashrc"
+else
+  ok "~/.bashrc exists, leaving it as is"
+fi
+render_zshrc
+
+head_ "Done"
+if (( ${#FAILED[@]} )); then
+  warn "skipped: ${FAILED[*]}"
+fi
+echo "  Restart Ghostty (or open a new tab) to pick up the configuration."

@@ -1,0 +1,13 @@
+# Ghostty configuration (Linux)
+# Installed to ~/.config/ghostty/config by ghostty/linux/install.sh (with @GHOSTTY_DIR@ rendered).
+
+config-file = ?@GHOSTTY_DIR@/config
+
+# Shell: always use zsh (never fish)
+command = /usr/bin/zsh
+
+# Shell integration only for zsh (no fish/bash injection)
+shell-integration = zsh
+
+# Single instance (GTK only; ignored on other platforms)
+gtk-single-instance = true

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Entrypoint: detects the OS and hands over to nvim/<os>/install.sh.
+#
+# Usage: ./nvim/install.sh [--dry-run]
+
+set -euo pipefail
+
+NVIM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+case "$(uname -s)" in
+  Linux)  OS=linux ;;
+  Darwin) OS=macos ;;
+  *)
+    echo "Unsupported OS: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+exec "$NVIM_DIR/$OS/install.sh" "$@"

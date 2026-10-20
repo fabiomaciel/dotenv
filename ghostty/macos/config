@@ -1,0 +1,9 @@
+# Ghostty configuration (macOS)
+# Installed to ~/.config/ghostty/config by ghostty/macos/install.sh (with @GHOSTTY_DIR@ rendered).
+
+config-file = ?@GHOSTTY_DIR@/config
+
+# Shell integration only for zsh (no fish/bash injection).
+# `command` is intentionally omitted: macOS has no /usr/bin/zsh, and
+# Ghostty falls back to $SHELL (zsh).
+shell-integration = zsh
