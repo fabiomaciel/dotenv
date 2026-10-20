@@ -11,6 +11,9 @@ if [[ -r /usr/share/cachyos-zsh-config/cachyos-config.zsh ]]; then
   source /usr/share/cachyos-zsh-config/cachyos-config.zsh
 fi
 
+# Prompt OS icon: penguin (Tux).
+typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='\uF17C'
+
 # opencode
 export PATH=/home/fabio/.opencode/bin:$PATH
 
