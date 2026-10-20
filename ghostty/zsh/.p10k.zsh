@@ -24,7 +24,8 @@
 
   # Unset all configuration options. This allows you to apply configuration changes without
   # restarting zsh. Edit ~/.p10k.zsh and type `source ~/.p10k.zsh`.
-  unset -m '(POWERLEVEL9K_*|DEFAULT_USER)~POWERLEVEL9K_GITSTATUS_DIR'
+  # OS icon is set per OS in ghostty/<os>/zsh/zshrc-os, so keep it from being unset here.
+  unset -m '(POWERLEVEL9K_*|DEFAULT_USER)~(POWERLEVEL9K_GITSTATUS_DIR|POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION)'
 
   # Zsh >= 5.1 is required.
   [[ $ZSH_VERSION == (5.<1->*|<6->.*) ]] || return
