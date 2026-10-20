@@ -8,3 +8,5 @@ fi
 
 # Prompt
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# OS icon defaults to the platform's own; each zshrc-os may override it.

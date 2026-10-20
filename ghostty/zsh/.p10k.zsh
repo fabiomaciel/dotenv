@@ -189,9 +189,8 @@
   #################################[ os_icon: os identifier ]##################################
   # OS identifier color.
   typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=255
-  # Custom icon: penguin on Linux, ghost on macOS.
-  # Overridden per OS by ghostty/<os>/zsh/zshrc-os.
-  typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION=$'\uF17C'
+  # Custom icon is set per OS in ghostty/<os>/zsh/zshrc-os, so that the
+  # shared config does not override it on either platform.
 
   ################################[ prompt_char: prompt symbol ]################################
   # Transparent background.
